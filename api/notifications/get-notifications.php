@@ -1,0 +1,5 @@
+<?php
+require_once '../../config/auth.php';
+requestMethod('GET');
+requireLogin();
+try{ $db=getDB(); $params=[currentUserId()]; $where='WHERE user_id=?'; if(!empty($_GET['type'])&&$_GET['type']!=='all'){ $type=$_GET['type']; if($type==='comments')$type='comment'; if($type==='connections')$type='connection'; $where.=' AND type=?'; $params[]=$type; } $stmt=$db->prepare("SELECT * FROM notifications $where ORDER BY created_at DESC"); $stmt->execute($params); $notifications=array_map(fn($n)=>['id'=>(int)$n['id'],'type'=>$n['type'],'message'=>$n['message'],'is_read'=>(int)$n['is_read'],'reference_id'=>$n['reference_id']?(int)$n['reference_id']:null,'created_at'=>$n['created_at']],$stmt->fetchAll()); $stmt=$db->prepare('SELECT COUNT(*) AS c FROM notifications WHERE user_id=? AND is_read=0'); $stmt->execute([currentUserId()]); jsonResponse(['success'=>true,'notifications'=>$notifications,'unread_count'=>(int)$stmt->fetch()['c']]); }catch(Throwable $e){ jsonError('Could not fetch notifications.',500); }

@@ -1,0 +1,5 @@
+<?php
+require_once '../../config/auth.php';
+requestMethod('GET');
+requireLogin();
+try{ $db=getDB(); $stmt=$db->prepare('SELECT rp.*, d.name AS district FROM roommate_profiles rp LEFT JOIN districts d ON d.id=rp.district_id WHERE rp.user_id=?'); $stmt->execute([currentUserId()]); $r=$stmt->fetch(); if(!$r) jsonResponse(['success'=>true,'profile'=>null]); $stmt=$db->prepare('SELECT a.id,a.name FROM roommate_preferred_areas rpa JOIN areas a ON a.id=rpa.area_id WHERE rpa.roommate_profile_id=?'); $stmt->execute([(int)$r['id']]); $areas=$stmt->fetchAll(); $stmt=$db->prepare('SELECT tag_name FROM roommate_tags WHERE roommate_profile_id=?'); $stmt->execute([(int)$r['id']]); $tags=array_column($stmt->fetchAll(),'tag_name'); $profile=$r; $profile['id']=(int)$r['id']; $profile['user_id']=(int)$r['user_id']; $profile['area_ids']=array_map(fn($a)=>(int)$a['id'],$areas); $profile['preferred_areas']=array_column($areas,'name'); $profile['tags']=$tags; jsonResponse(['success'=>true,'profile'=>$profile]); }catch(Throwable $e){ jsonError('Could not fetch profile.',500); }
